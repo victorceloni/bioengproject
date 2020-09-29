@@ -1,0 +1,114 @@
+clc;
+clear all;
+
+%Set das constantes
+Cm = 1; % Capacitância da membrana
+
+
+Vna = 50; % Tensão de Sódio
+Vr = -65.0001; % Tensão em repouso Vr - Vna = -115;
+Vl = -54.4; % Tensão de dispersão Vr - Vl = -10.613;
+Vk = -77; % Tensão de Potássio Vr - Vk = 12;
+
+ 
+Gna_max = 120; % Condutância do Sódio máxima
+Gk_max = 36; % Condutância do Potássio máxima 
+Gl = 0.3; % Condutância de dispesão
+
+%Implementação do tempo
+tamanho = 1000; %tamanho da amostragem
+tempo_total = 40; 
+passo = tempo_total/(tamanho-1);
+t =  0:(tempo_total/(tamanho-1)):tempo_total;
+
+%Set inicial das variáveis
+Im = [60*ones(1,tamanho/4) 60*ones(1,tamanho/4) 60*ones(1,tamanho/4) 60*ones(1,tamanho/4)];
+
+Vm = -65;
+
+n = 0.3;
+
+m = 0.09;
+
+h = 0.6;
+
+m3h = (m).^(3).*h;
+
+Gna(1) = Gna_max.*m3h;
+
+Gk(1) = Gk_max.*n.^4;
+
+%===Métodos Numéricos===%
+%===Euler: ym+1 = ym + f*(tm,ym)*h 
+%===Runge-Kutta 2a ordem: ym+1 = ym + f*(tm+h/2,ym+fmh/2)*h,com fm = f(tm,ym)
+
+for i=1:numel(t)-1
+
+V = Vm(i) - Vr;
+
+alpha_n = (0.1-0.01.*V)./(exp(1-0.1.*V) - 1);
+beta_n = (0.125)./(exp(0.0125.*V));
+alpha_m = (2.5-0.1.*V)./(exp(2.5-0.1.*V)-1);
+beta_m = 4./(exp(V./18));
+alpha_h = 0.07./exp(0.05.*V);
+beta_h = 1./(exp(3-0.1.*V)+1);
+
+
+%Euler
+%ym+1 = ym + f*(tm,ym)*h
+dn_dt = n + passo.*(alpha_n.*(1-n) - beta_n.* n);
+dm_dt = m + passo.*(alpha_m.*(1-m) - beta_m.* m);
+dh_dt = h + passo.*(alpha_h.*(1-h) - beta_h.* h);
+
+n = dn_dt; %armazenando para o valor anterior
+m = dm_dt;
+h = dh_dt;
+
+m3h = (m).^(3).*h;
+Gna(i+1) = Gna_max.*m3h;
+Gk(i+1) = Gk_max.*n.^4;
+Gm = Gk + Gna;
+
+Ina = (Vm(i) - Vna).*Gna(i+1);
+Ik = (Vm(i) - Vk).*Gk(i+1);
+Il = (Vm(i) - Vl).*Gl;
+
+Iion = Im - Ina - Ik - Il;
+
+%Euler final para plot do Vm
+dVm_dt = Vm(i) + passo.*Iion(i);
+
+Vm(i+1) = dVm_dt;
+
+
+endfor
+
+figure(1)
+p1=plot(t,Im,'LineWidth',3);
+axis([0 tempo_total 0 1]);
+legend([p1],'Im');
+ylabel('I [mA]')
+xlabel('Time [ms]') 
+title('Variação de Im em relação ao tempo')
+
+
+figure(2)
+
+p2=plot(t,Gna,'LineWidth',3,'y');
+hold on
+p3=plot(t,Gk,'LineWidth',3,'g');
+hold on
+p4=plot(t,Gm,'LineWidth',2,'b');
+hold on
+axis([0 tempo_total 0 1]);
+legend([p2,p3,p4],'Gna','Gk','Gm');
+ylabel('G [mS/cm²]')
+xlabel('Time [ms]') 
+title('Variação de Gna, Gk e sua soma Gm na propagação do impulso')
+
+figure(3)
+p5=plot(t,Vm,'LineWidth',3,'Color','black');
+axis([0 40 0 1]);
+legend([p5],'Vm');
+ylabel('Vm [mV]')
+xlabel('Time [ms]') 
