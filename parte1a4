@@ -1,0 +1,116 @@
+clc;
+clear all;
+Cm = 1; % Capacitância da membrana
+
+
+Vna = 50; % Tensão de Sódio
+Vr = -65.0001; % Tensão em repouso Vr - Vna = -115;
+Vl = -54.4; % Tensão de dispersão Vr - Vl = -10.613;
+Vk = -77; % Tensão de Potássio Vr - Vk = 12;
+
+ 
+Gna_max = 120; % Condutância do Sódio máxima
+Gk_max = 36; % Condutância do Potássio máxima 
+Gl = 0.3; % Condutância de dispesão
+
+tamanho = 1000;
+tempo_total = 16;
+
+t =  0:(tempo_total/(tamanho-1)):tempo_total;
+t1 = 0:(tempo_total/(tamanho-1)):tempo_total/2;
+t2 = 0:(tempo_total/(tamanho-1)):tempo_total/2; 
+t3 = [t1 t2];
+
+Vm = [20*ones(1,tamanho/2) -65*ones(1,tamanho/2)];
+
+V_linha = Vm - Vr;
+
+alpha_n = (0.1-0.01.*V_linha)./(exp(1-0.1.*V_linha) - 1);
+beta_n = (0.125)./(exp(0.0125.*V_linha));
+alpha_m = (2.5-0.1.*V_linha)./(exp(2.5-0.1.*V_linha)-1);
+beta_m = 4./(exp(V_linha./18));
+alpha_h = 0.07./exp(0.05.*V_linha);
+beta_h = 1./(exp(3-0.1.*V_linha)+1);
+
+n_inf = alpha_n./(alpha_n+beta_n);
+m_inf = alpha_m./(alpha_m+beta_m);
+h_inf = alpha_h./(alpha_h+beta_h);
+
+tau_n = 1./(alpha_n+beta_n);
+tau_m = 1./(alpha_m+beta_m);
+tau_h = 1./(alpha_h+beta_h);
+
+n0 = [0.3*ones(1,tamanho/2) n_inf(1)*ones(1,tamanho/2)];
+n1 = n_inf-(n_inf-n0).*exp(-t3./tau_n);
+
+m0 = [0.1*ones(1,tamanho/2) m_inf(1)*ones(1,tamanho/2)];
+m1 = m_inf-(m_inf-m0).*exp(-t3./tau_m);
+
+h0 = [0.6*ones(1,tamanho/2) h_inf(1)*ones(1,tamanho/2)];
+h1 = h_inf-(h_inf-h0).*exp(-t3./tau_h);
+
+m3h = (m1).^(3).*h1;
+
+figure(1)
+
+p3=plot(t,n1,'LineWidth',3,'--');
+hold on
+p4=plot(t,n1.^4,'LineWidth',3);
+axis([0 17 0 1]);
+legend([p3,p4],'n','n^4')
+ylabel('1/ms')
+xlabel('Time [ms]') 
+title('Variação de n e n^4 para uma despolarização e repolarização repentina')
+
+figure(2)
+subplot(3,1,1);
+p1=plot(t,alpha_n,'LineWidth',3);
+hold on
+p2=plot(t,beta_n,'LineWidth',3);
+axis([0 16 0 1.1]);
+legend([p1,p2],'alpha n','beta n')
+ylabel('1/ms')
+xlabel('Vm [mV]') 
+title('Variação do coeficiente alpha n e beta n para uma despolarização e repolarização repentina')
+subplot(3,1,2);
+p5=plot(t,alpha_m,'LineWidth',3);
+hold on
+p6=plot(t,beta_m,'LineWidth',3);
+axis([0 16 0 8]);
+legend([p5,p6],'alpha m','beta m')
+ylabel('1/ms')
+xlabel('Vm [mV]') 
+title('Variação do coeficiente alpha m e beta m para uma despolarização e repolarização repentina')
+subplot(3,1,3);
+p7=plot(t,alpha_h,'LineWidth',3);
+hold on
+p8=plot(t,beta_h,'LineWidth',3);
+axis([0 16 0 1.1]);
+legend([p7,p8],'alpha h','beta h')
+ylabel('1/ms')
+xlabel('Vm [mV]') 
+title('Variação do coeficiente alpha h e beta h para uma despolarização e repolarização repentina')
+
+
+figure (3)
+p9=plot(t/2,m1,'LineWidth',3,'--');
+hold on
+p10=plot(t/2,h1.^4,'LineWidth',3,'--');
+hold on
+p11=plot(t/2,m1.^3,'LineWidth',3,'--');
+hold on
+p12=plot(t/2,m3h,'LineWidth',3);
+axis([0 17 0 1.1]);
+legend([p9,p10,p11,p12],'m','h','m^3','Gna')
+ylabel('1/ms')
+xlabel('Vm [mV]') 
+title('Variação de m, h, m^3 e m^3*h para uma despolarização e repolarização repentina')
+
+figure(4)
+p13=plot(t,m3h*Gna_max,'LineWidth',3);
+hold on
+p14=plot(t,(n1.^4)*Gk_max,'LineWidth',3);
+legend([p13,p14],'Gna','Gk')
+ylabel('G [mS/cm²]')
+xlabel('Time [ms]') 
+title('Comportamento da condutância do sódio e potássio')
